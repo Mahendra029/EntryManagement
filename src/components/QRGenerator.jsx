@@ -115,23 +115,23 @@ const QRGenerator = () => {
 
   if (isRegistering) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center py-6 animate-in slide-in-from-bottom duration-500 h-full overflow-hidden">
-        <div className="text-center px-4 mb-10">
-          <h2 className="text-3xl font-bold text-white tracking-tight">Add New Guest</h2>
-          <p className="text-sm text-gray-400 mt-2">Register a person to generate their pass</p>
+      <div className="flex-1 flex flex-col items-center justify-start pt-10 pb-6 animate-in slide-in-from-bottom duration-500 h-full overflow-hidden">
+        <div className="text-center px-4 mb-8">
+          <h2 className="text-2xl font-bold text-white tracking-tight">Add New Guest</h2>
+          <p className="text-xs text-gray-400 mt-1">Register a person to generate their pass</p>
         </div>
 
-        <form onSubmit={handleGenerate} className="w-full max-w-[320px] space-y-8 px-4 flex flex-col items-center">
-          <div className="relative w-full aspect-square bg-white/5 border-2 border-dashed border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col items-center justify-center max-h-[260px] shadow-2xl">
+        <form onSubmit={handleGenerate} className="w-full max-w-[320px] space-y-6 px-4 flex flex-col items-center">
+          <div className="relative w-[240px] h-[240px] bg-white/5 border-2 border-dashed border-white/10 rounded-full overflow-hidden flex flex-col items-center justify-center shadow-2xl">
             {isCameraOpen ? (
               <div className="relative w-full h-full">
-                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover rounded-full" />
                 <button type="button" onClick={capturePhoto} className="absolute bottom-6 left-1/2 -translate-x-1/2 w-14 h-14 bg-white rounded-full border-4 border-primary shadow-2xl active:scale-90 transition-transform" />
               </div>
             ) : selfie ? (
               <div className="relative w-full h-full">
-                <img src={selfie} className="w-full h-full object-cover" alt="Selfie" />
-                <button type="button" onClick={() => setSelfie(null)} className="absolute top-4 right-4 p-2 bg-red-500 rounded-full text-white shadow-lg">
+                <img src={selfie} className="w-full h-full object-cover rounded-full" alt="Selfie" />
+                <button type="button" onClick={() => setSelfie(null)} className="absolute top-4 right-8 p-2 bg-red-500 rounded-full text-white shadow-lg">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
@@ -162,6 +162,73 @@ const QRGenerator = () => {
     );
   }
 
+  const downloadQR = () => {
+    const svg = document.getElementById("qr-code-svg");
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    const selfieImg = new Image();
+
+    img.onload = () => {
+      canvas.width = 600;
+      canvas.height = 800;
+      
+      // Draw white background
+      ctx.fillStyle = "white";
+      ctx.roundRect(0, 0, 600, 800, 60);
+      ctx.fill();
+
+      // Draw QR Code
+      ctx.drawImage(img, 50, 50, 500, 500);
+      
+      // Draw Selfie in the center
+      selfieImg.onload = () => {
+        const size = 130; // Size of the selfie in the download
+        const x = 300 - size/2;
+        const y = 300 - size/2;
+        
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(300, 300, size/2, 0, Math.PI * 2);
+        ctx.closePath();
+        
+        // Fill with white first to hide any square corners from the QR hole
+        ctx.fillStyle = "white";
+        ctx.fill();
+        
+        ctx.clip();
+        ctx.drawImage(selfieImg, x, y, size, size);
+        ctx.restore();
+
+        // Draw border for selfie
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(300, 300, size/2, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Add Name and Status
+        ctx.fillStyle = "#1e293b";
+        ctx.font = "900 52px Outfit, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(activeGuest.name.toUpperCase(), 300, 640);
+        
+        ctx.font = "bold 24px Outfit, sans-serif";
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText("DIGITAL GUEST PASS ACTIVE", 300, 700);
+
+        const pngFile = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.download = `${activeGuest.name}_Pass.png`;
+        downloadLink.href = pngFile;
+        downloadLink.click();
+      };
+      selfieImg.src = activeGuest.selfie;
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden py-2 animate-in fade-in duration-500">
       <div className="w-full overflow-x-auto hide-scrollbar flex items-center gap-3 px-6 py-2">
@@ -176,46 +243,55 @@ const QRGenerator = () => {
       </div>
 
       {activeGuest && (
-        <div className="flex-1 flex flex-col items-center justify-center p-4 animate-in zoom-in-95 duration-300">
-          <div className="w-full max-w-[320px] bg-white p-6 rounded-[2.5rem] shadow-2xl flex flex-col items-center space-y-4 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary to-accent"></div>
+        <div className="flex-1 flex flex-col items-center justify-start pt-8 p-4 animate-in zoom-in-95 duration-300">
+          <div className="w-full max-w-[320px] bg-white pt-12 pb-10 px-8 rounded-[3rem] shadow-2xl flex flex-col items-center justify-center space-y-6 relative overflow-hidden">
             <div className="relative">
-              <QRCodeSVG value={qrValue} size={200} level="H" imageSettings={{ src: activeGuest.selfie, height: 50, width: 50, excavate: true }} />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[52px] h-[52px] pointer-events-none">
-                <div className="w-full h-full rounded-full border-[2.5px] border-white overflow-hidden shadow-sm">
-                  <img src={activeGuest.selfie} className="w-full h-full object-cover" alt="logo" />
+              <QRCodeSVG 
+                id="qr-code-svg"
+                value={qrValue} 
+                size={220} 
+                level="H" 
+                imageSettings={{ height: 54, width: 54, excavate: true }} 
+              />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60px] h-[60px] pointer-events-none">
+                <div className="w-full h-full rounded-full border-[3px] border-white bg-white overflow-hidden shadow-sm flex items-center justify-center">
+                  <img src={activeGuest.selfie} className="w-full h-full object-cover rounded-full" alt="logo" />
                 </div>
               </div>
             </div>
-            <div className="text-center">
-              <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight leading-tight">{activeGuest.name}</h3>
-              <p className="text-[9px] font-mono text-gray-500 font-bold uppercase tracking-[0.2em] mt-1">
-                {activeStatus === 'In' ? 'PASSPORT ACTIVE - CHECKED IN' : 'Guest Pass Active'}
+            
+            <div className="text-center pb-2">
+              <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight leading-none">{activeGuest.name}</h3>
+              <p className="text-[10px] font-mono text-gray-400 font-bold uppercase tracking-[0.2em] mt-2">
+                {activeStatus === 'In' ? 'PASSPORT ACTIVE' : 'Guest Pass Active'}
               </p>
-            </div>
-            <div className="w-full pt-3 border-t border-gray-100 flex justify-center">
-               <span className={`text-[9px] font-bold uppercase tracking-widest ${activeStatus === 'In' ? 'text-green-500 animate-pulse' : 'text-gray-200'}`}>
-                {activeStatus === 'In' ? 'Entry Verified' : 'Digital Entry Ready'}
-               </span>
             </div>
           </div>
           
-          {/* ONLY SHOW CANCEL BUTTON IF NOT CHECKED IN */}
-          {activeStatus !== 'In' && (
+          <div className="flex flex-col items-center gap-4 mt-6">
             <button 
-              onClick={() => {
-                const updatedWallet = guests.filter(g => g.id !== activeGuest.id);
-                setGuests(updatedWallet);
-                localStorage.setItem('guest_wallet', JSON.stringify(updatedWallet));
-                if (updatedWallet.length > 0) setActiveGuest(updatedWallet[0]);
-                else { setActiveGuest(null); setIsRegistering(true); }
-              }}
-              className="mt-4 flex items-center gap-2 text-[10px] font-bold text-red-500/60 hover:text-red-500 uppercase tracking-widest transition-all"
+              onClick={downloadQR}
+              className="flex items-center gap-2 px-6 py-2.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-              Cancel this pass
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download Pass Image
             </button>
-          )}
+            
+            {activeStatus !== 'In' && (
+              <button 
+                onClick={() => {
+                  const updatedWallet = guests.filter(g => g.id !== activeGuest.id);
+                  setGuests(updatedWallet);
+                  localStorage.setItem('guest_wallet', JSON.stringify(updatedWallet));
+                  if (updatedWallet.length > 0) setActiveGuest(updatedWallet[0]);
+                  else { setActiveGuest(null); setIsRegistering(true); }
+                }}
+                className="text-[10px] font-bold text-red-500/40 hover:text-red-500 uppercase tracking-widest transition-all"
+              >
+                Cancel this pass
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
