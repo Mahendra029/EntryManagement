@@ -124,43 +124,54 @@ const QRGenerator = () => {
 
   if (isRegistering) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-between py-4 animate-in slide-in-from-bottom duration-500 h-full overflow-hidden">
-        <div className="text-center px-4">
-          <h2 className="text-2xl font-bold text-white">Add New Guest</h2>
-          <p className="text-xs text-gray-400 mt-1">Register a person to generate their pass</p>
+      <div className="flex-1 flex flex-col items-center justify-center py-6 animate-in slide-in-from-bottom duration-500 h-full overflow-hidden">
+        <div className="text-center px-4 mb-10">
+          <h2 className="text-3xl font-bold text-white tracking-tight">Add New Guest</h2>
+          <p className="text-sm text-gray-400 mt-2">Register a person to generate their pass</p>
         </div>
 
-        <form onSubmit={handleGenerate} className="w-full max-w-[320px] space-y-4 px-4">
-          <div className="relative w-full aspect-square bg-white/5 border-2 border-dashed border-white/10 rounded-3xl overflow-hidden flex flex-col items-center justify-center max-h-[240px]">
+        <form onSubmit={handleGenerate} className="w-full max-w-[320px] space-y-8 px-4 flex flex-col items-center">
+          <div className="relative w-full aspect-square bg-white/5 border-2 border-dashed border-white/10 rounded-[2.5rem] overflow-hidden flex flex-col items-center justify-center max-h-[260px] shadow-2xl">
             {isCameraOpen ? (
               <div className="relative w-full h-full">
                 <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                <button type="button" onClick={capturePhoto} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-12 h-12 bg-white rounded-full border-4 border-primary" />
+                <button type="button" onClick={capturePhoto} className="absolute bottom-6 left-1/2 -translate-x-1/2 w-14 h-14 bg-white rounded-full border-4 border-primary shadow-2xl active:scale-90 transition-transform" />
               </div>
             ) : selfie ? (
               <div className="relative w-full h-full">
                 <img src={selfie} className="w-full h-full object-cover" alt="Selfie" />
-                <button type="button" onClick={() => setSelfie(null)} className="absolute top-2 right-2 p-1.5 bg-red-500 rounded-full text-white">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <button type="button" onClick={() => setSelfie(null)} className="absolute top-4 right-4 p-2 bg-red-500 rounded-full text-white shadow-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
             ) : (
-              <button type="button" onClick={startCamera} className="flex flex-col items-center space-y-2 text-gray-400">
-                <div className="p-4 bg-white/5 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-                <span className="text-xs uppercase font-bold">Take Selfie</span>
+              <button type="button" onClick={startCamera} className="flex flex-col items-center space-y-3 text-gray-400 hover:text-white transition-all group">
+                <div className="p-5 bg-white/5 rounded-full group-hover:bg-primary/20 transition-all transform group-hover:scale-110">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                </div>
+                <span className="text-xs uppercase font-black tracking-widest">Take Selfie</span>
               </button>
             )}
           </div>
 
-          <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="Full Name" className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-gray-500 text-sm" required />
-          
-          <div className="flex gap-2">
-            {guests.length > 0 && (
-              <button type="button" onClick={() => setIsRegistering(false)} className="flex-1 py-3.5 bg-white/5 text-gray-400 font-bold rounded-2xl text-xs uppercase">Cancel</button>
-            )}
-            <button type="submit" disabled={uploading || !selfie} className="flex-[2] py-3.5 bg-primary text-white font-bold rounded-2xl shadow-lg text-xs uppercase tracking-widest">
-              {uploading ? 'Wait...' : 'Generate Pass'}
-            </button>
+          <div className="w-full space-y-4">
+            <input 
+              type="text" 
+              value={userName} 
+              onChange={(e) => setUserName(e.target.value)} 
+              placeholder="Full Name" 
+              className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-gray-500 text-base focus:ring-2 focus:ring-primary/50 transition-all outline-none" 
+              required 
+            />
+            
+            <div className="flex gap-3">
+              {guests.length > 0 && (
+                <button type="button" onClick={() => setIsRegistering(false)} className="flex-1 py-4 bg-white/5 text-gray-400 font-bold rounded-2xl text-xs uppercase tracking-widest hover:bg-white/10 transition-all">Cancel</button>
+              )}
+              <button type="submit" disabled={uploading || !selfie} className="flex-[2] py-4 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/30 text-xs uppercase tracking-[0.2em] hover:brightness-110 active:scale-95 transition-all">
+                {uploading ? 'Uploading...' : 'Generate Pass'}
+              </button>
+            </div>
           </div>
         </form>
         <canvas ref={canvasRef} className="hidden" />
