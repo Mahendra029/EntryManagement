@@ -1,5 +1,5 @@
 /**
- * Google Apps Script Backend for QR Check-In/Out (One Row Per Guest)
+ * Google Apps Script Backend for QR Check-In/Out (Smart Search Logic)
  */
 
 const FOLDER_NAME = "Guest_Selfies";
@@ -19,22 +19,15 @@ function doGet(e) {
   const name = e.parameter.name || "Guest";
   const action = e.parameter.action;
 
-  // New Action: Check if guest is still "In"
   if (action === "check_status") {
     const data = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] == id) {
-        return ContentService.createTextOutput(JSON.stringify({ status: data[i][5] }))
-          .setMimeType(ContentService.MimeType.JSON);
-      }
+      if (data[i][0] == id) return ContentService.createTextOutput(JSON.stringify({ status: data[i][5] })).setMimeType(ContentService.MimeType.JSON);
     }
-    return ContentService.createTextOutput(JSON.stringify({ status: "NotFound" }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ status: "Pending" })).setMimeType(ContentService.MimeType.JSON);
   }
 
-  if (!id) {
-    return HtmlService.createHtmlOutput("<h2 style='color:red; font-family: sans-serif;'>Error: Missing ID</h2>");
-  }
+  if (!id) return HtmlService.createHtmlOutput("<h2 style='color:red;'>Error: Missing ID</h2>");
 
   const data = sheet.getDataRange().getValues();
   let foundRowIndex = -1;
@@ -54,9 +47,17 @@ function doGet(e) {
   const displayTime = Utilities.formatDate(timestamp, "GMT+5:30", "MM/dd/yyyy HH:mm:ss");
   const uiTime = Utilities.formatDate(timestamp, "GMT+5:30", "MMM d, yyyy HH:mm:ss");
 
+  // ✅ SMART SEARCH: If not in sheet, find the selfie in Drive by ID
   if (foundRowIndex === -1) {
-    sheet.appendRow([id, name, "", displayTime, "", "In"]);
-    return renderResponse("Entry Recorded", "Welcome, " + name + "!", "#10b981", uiTime, "");
+    const folder = getFolder(FOLDER_NAME);
+    const files = folder.getFilesByName(name + "_" + id + ".jpg");
+    let finalPhotoLink = "";
+    if (files.hasNext()) {
+      finalPhotoLink = "https://drive.google.com/uc?export=view&id=" + files.next().getId();
+    }
+    
+    sheet.appendRow([id, name, finalPhotoLink, displayTime, "", "In"]);
+    return renderResponse("Entry Recorded", "Welcome, " + name + "!", "#10b981", uiTime, finalPhotoLink);
   }
 
   if (currentStatus === "In") {
@@ -80,19 +81,13 @@ function doPost(e) {
       const bytes = Utilities.base64Decode(data.image.split(",")[1]);
       const blob = Utilities.newBlob(bytes, contentType, data.name + "_" + data.id + ".jpg");
       
-      const file = folder.createFile(blob);
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      const fileUrl = file.getUrl();
-
-      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-      sheet.appendRow([data.id, data.name, fileUrl, "", "", "Registered"]);
+      folder.createFile(blob).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       
-      return ContentService.createTextOutput(JSON.stringify({ status: "success", url: fileUrl }))
+      return ContentService.createTextOutput(JSON.stringify({ status: "success" }))
         .setMimeType(ContentService.MimeType.JSON);
     }
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ status: "error" }));
   }
 }
 
@@ -110,30 +105,7 @@ function getFolder(name) {
 }
 
 function renderResponse(title, message, color, time, photo) {
-  const photoHtml = photo ? `<img src="${photo.replace("open?", "uc?export=view&").replace("/file/d/", "/uc?export=view&id=").split("/view")[0]}" style="width:120px; height:120px; border-radius:1.5rem; object-fit:cover; margin-bottom:1rem; border:4px solid ${color}; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">` : "";
-  
-  const html = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f8fafc; }
-          .card { background: white; padding: 2.5rem; border-radius: 2.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); text-align: center; max-width: 90%; width: 350px; border-top: 12px solid ${color}; }
-          h1 { color: #1e293b; margin: 0.5rem 0; font-size: 1.6rem; }
-          p { color: #64748b; margin-bottom: 2rem; font-size: 1.1rem; }
-          .time { font-size: 0.85rem; color: #94a3b8; padding-top: 1.5rem; border-top: 1px solid #f1f5f9; }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          ${photoHtml}
-          <h1>${title}</h1>
-          <p>${message}</p>
-          <div class="time">Recorded at: ${time} (IST)</div>
-        </div>
-      </body>
-    </html>
-  `;
+  const photoHtml = photo ? `<img src="${photo}" style="width:120px; height:120px; border-radius:1.5rem; object-fit:cover; margin-bottom:1rem; border:4px solid ${color};">` : "";
+  const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f8fafc}.card{background:white;padding:2.5rem;border-radius:2.5rem;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);text-align:center;width:350px;border-top:12px solid ${color}}h1{color:#1e293b;margin:0.5rem 0}p{color:#64748b;margin-bottom:2rem}.time{font-size:0.85rem;color:#94a3b8;border-top:1px solid #f1f5f9;padding-top:1.5rem}</style></head><body><div class="card">${photoHtml}<h1>${title}</h1><p>${message}</p><div class="time">Recorded at: ${time} (IST)</div></div></body></html>`;
   return HtmlService.createHtmlOutput(html).setTitle(title);
 }
